@@ -35,13 +35,15 @@ class Car {
     this.angle = 0;
     this.speed = 2;
     this.size = 20;
-    this.sensors = [-Math.PI / 3, -Math.PI / 6, 0, Math.PI / 6, Math.PI / 3];  // 5개 센서
+    this.sensors = [-Math.PI / 3, -Math.PI / 6, 0, Math.PI / 6, Math.PI / 3];
     this.sensorLength = 100;
     this.alive = true;
     this.agentWorker = worker;
     this.lastDistance = this.distanceToFinish();
     this.pastPositions = [];
     this.angleDelta = 0;
+    this.recentAngles = [];
+    this.stepCount = 0;
   }
 
   getSensorInputs() {
@@ -70,6 +72,12 @@ class Car {
 
   update() {
     if (!this.alive) return;
+
+    this.stepCount++;
+    if (this.stepCount > 300) {
+      this.alive = false;
+      return;
+    }
 
     const state = this.getSensorInputs();
     const requestId = requestIdCounter++;
@@ -119,27 +127,32 @@ class Car {
 
     let reward = 0;
 
-    // 거리 기반
     reward += (delta > 0) ? delta * 10 : -1;
     if (displacement < 20) reward -= 2;
 
-    // 센서 경고
     const sensors = this.getSensorInputs();
     for (const s of sensors) {
       if (s > 0.7) reward -= 5;
     }
 
-    // 방향 안정성
     if (Math.abs(this.angleDelta) < 0.01) reward += 0.5;
     else reward -= 0.5;
 
-    // 목표 방향 보상
+    // === 목표 방향 보상 (거리 반영) ===
     const angleToFinish = Math.atan2(finishLine.y - this.y, finishLine.x - this.x);
     let angleDiff = Math.abs(this.angle - angleToFinish) % (2 * Math.PI);
     if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-    reward += (Math.PI - angleDiff);  // 목표 방향과 가까울수록 보상
+    reward += (Math.PI - angleDiff) * (1 - nowDist / 1000);
 
-    // NaN 방지
+    // === 회전 유지 감지 ===
+    this.recentAngles.push(this.angle);
+    if (this.recentAngles.length > 30) this.recentAngles.shift();
+    if (this.recentAngles.length >= 10) {
+      const mean = this.recentAngles.reduce((a, b) => a + b, 0) / this.recentAngles.length;
+      const variance = this.recentAngles.reduce((sum, a) => sum + Math.abs(a - mean), 0);
+      if (variance < 0.1) reward -= 10;
+    }
+
     if (isNaN(reward)) {
       console.warn("NaN 보상 발생", sensors, delta, displacement);
       reward = -10;
