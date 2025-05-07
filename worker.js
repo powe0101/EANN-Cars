@@ -1,5 +1,9 @@
 importScripts("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0");
-
+// worker.js 상단에 추가
+tf.setBackend('webgl').then(() => {
+    console.log('Using WebGL backend');
+  });
+  
 class DQNAgent {
   constructor(stateSize, actionSize) {
     this.stateSize = stateSize;
