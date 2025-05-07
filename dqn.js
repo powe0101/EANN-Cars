@@ -229,4 +229,4 @@ async function animate() {
 
 initializeCars();
 animate();
-</script>
+//</script>
