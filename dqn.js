@@ -35,12 +35,13 @@ class Car {
     this.angle = 0;
     this.speed = 2;
     this.size = 20;
-    this.sensors = [-Math.PI/4, 0, Math.PI/4];
+    this.sensors = [-Math.PI / 4, 0, Math.PI / 4];
     this.sensorLength = 100;
     this.alive = true;
     this.agentWorker = worker;
     this.lastDistance = this.distanceToFinish();
     this.pastPositions = [];
+    this.angleDelta = 0;
   }
 
   getSensorInputs() {
@@ -70,11 +71,13 @@ class Car {
     if (!this.alive) return;
 
     const state = this.getSensorInputs();
-
     const requestId = requestIdCounter++;
+
     pendingActions.set(requestId, (action) => {
+      const prevAngle = this.angle;
       if (action === 0) this.angle -= 0.05;
       else if (action === 2) this.angle += 0.05;
+      this.angleDelta = this.angle - prevAngle;
 
       this.x += Math.cos(this.angle) * this.speed;
       this.y += Math.sin(this.angle) * this.speed;
@@ -112,10 +115,26 @@ class Car {
 
     if (isOnFinish(this.x, this.y)) return 100;
     if (!isOnTrack(this.x, this.y)) return -100;
-    if (displacement < 20) return -2;
-    if (delta < 0) return -1;
 
-    return delta * 10;
+    let reward = 0;
+
+    // 목표 접근 보상
+    reward += (delta > 0) ? delta * 10 : -1;
+
+    // 제자리 방지
+    if (displacement < 20) reward -= 2;
+
+    // 센서 위험 감지
+    const sensors = this.getSensorInputs();
+    for (const s of sensors) {
+      if (s > 0.7) reward -= 5;
+    }
+
+    // 직선 주행 보상 / 회전 패널티
+    if (Math.abs(this.angleDelta) < 0.01) reward += 0.5;
+    else reward -= 0.5;
+
+    return reward;
   }
 
   draw(ctx) {
