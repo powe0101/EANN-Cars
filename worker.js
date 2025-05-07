@@ -6,7 +6,7 @@ tf.setBackend('webgl').then(() => {
 
 class DQNAgent {
   constructor(stateSize, actionSize) {
-    this.stateSize = stateSize;
+    this.stateSize = stateSize; // ✅ 5개 센서
     this.actionSize = actionSize;
     this.gamma = 0.95;
     this.epsilon = 1.0;
@@ -68,7 +68,8 @@ class DQNAgent {
   }
 }
 
-const agent = new DQNAgent(3, 3);
+// ✅ 센서 5개에 맞춰 stateSize도 5
+const agent = new DQNAgent(5, 3);
 
 onmessage = async (e) => {
   const { type, data, requestId } = e.data;
