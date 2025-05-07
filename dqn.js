@@ -16,6 +16,18 @@ function isOnFinish(x, y) {
          y > finishLine.y - 20 && y < finishLine.y + 20;
 }
 
+let requestIdCounter = 0;
+const pendingActions = new Map();
+
+const worker = new Worker("worker.js");
+worker.onmessage = (e) => {
+  const { type, requestId, action } = e.data;
+  if (type === "action" && pendingActions.has(requestId)) {
+    pendingActions.get(requestId)(action);
+    pendingActions.delete(requestId);
+  }
+};
+
 class Car {
   constructor(x, y, worker) {
     this.x = x;
@@ -58,24 +70,32 @@ class Car {
     if (!this.alive) return;
 
     const state = this.getSensorInputs();
-    const action = Math.floor(Math.random() * 3); // 임시 랜덤
 
-    if (action === 0) this.angle -= 0.05;
-    else if (action === 2) this.angle += 0.05;
+    const requestId = requestIdCounter++;
+    pendingActions.set(requestId, (action) => {
+      if (action === 0) this.angle -= 0.05;
+      else if (action === 2) this.angle += 0.05;
 
-    this.x += Math.cos(this.angle) * this.speed;
-    this.y += Math.sin(this.angle) * this.speed;
+      this.x += Math.cos(this.angle) * this.speed;
+      this.y += Math.sin(this.angle) * this.speed;
 
-    const reward = this.computeReward();
-    const nextState = this.getSensorInputs();
-    const done = !isOnTrack(this.x, this.y) || isOnFinish(this.x, this.y);
+      const reward = this.computeReward();
+      const nextState = this.getSensorInputs();
+      const done = !isOnTrack(this.x, this.y) || isOnFinish(this.x, this.y);
 
-    this.agentWorker.postMessage({
-      type: "experience",
-      data: { state, action, reward, nextState, done }
+      this.agentWorker.postMessage({
+        type: "experience",
+        data: { state, action, reward, nextState, done }
+      });
+
+      if (done) this.alive = false;
     });
 
-    if (done) this.alive = false;
+    this.agentWorker.postMessage({
+      type: "act",
+      requestId,
+      data: state
+    });
   }
 
   computeReward() {
@@ -123,7 +143,6 @@ const carCount = 10;
 let cars = [];
 let generation = 1;
 let stepCounter = 0;
-const worker = new Worker("worker.js");
 
 function initializeCars() {
   cars = [];
@@ -150,7 +169,7 @@ function animate() {
   }
 
   stepCounter++;
-  if (stepCounter % 5 === 0) {
+  if (stepCounter % 10 === 0) {
     worker.postMessage({ type: "train" });
   }
 

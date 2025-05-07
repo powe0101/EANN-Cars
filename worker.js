@@ -1,9 +1,9 @@
 importScripts("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0");
-// worker.js 상단에 추가
+
 tf.setBackend('webgl').then(() => {
-    console.log('Using WebGL backend');
-  });
-  
+  console.log('Using WebGL backend');
+});
+
 class DQNAgent {
   constructor(stateSize, actionSize) {
     this.stateSize = stateSize;
@@ -55,15 +55,30 @@ class DQNAgent {
     await this.model.fit(tf.tensor2d(states), tf.tensor2d(targets), { epochs: 1, verbose: 0 });
     if (this.epsilon > this.epsilonMin) this.epsilon *= this.epsilonDecay;
   }
+
+  act(state) {
+    if (Math.random() < this.epsilon) {
+      return Math.floor(Math.random() * this.actionSize);
+    }
+    return tf.tidy(() => {
+      const input = tf.tensor2d([state]);
+      const qValues = this.model.predict(input);
+      return qValues.argMax(1).dataSync()[0];
+    });
+  }
 }
 
 const agent = new DQNAgent(3, 3);
 
 onmessage = async (e) => {
-  const { type, data } = e.data;
+  const { type, data, requestId } = e.data;
+
   if (type === "experience") {
     agent.remember(data);
   } else if (type === "train") {
     await agent.replay();
+  } else if (type === "act") {
+    const action = agent.act(data);
+    postMessage({ type: "action", requestId, action });
   }
 };
