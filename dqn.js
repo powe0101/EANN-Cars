@@ -74,7 +74,7 @@ class Car {
     if (!this.alive) return;
 
     this.stepCount++;
-    if (this.stepCount > 300) {
+    if (this.stepCount > 1000) {
       this.alive = false;
       return;
     }
