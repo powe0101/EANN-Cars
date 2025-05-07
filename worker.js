@@ -31,7 +31,7 @@ class DQNAgent {
 
   remember(exp) {
     this.memory.push(exp);
-    if (this.memory.length > 30000) this.memory.shift();
+    if (this.memory.length > 10000) this.memory.shift();
   }
 
   async replay() {
