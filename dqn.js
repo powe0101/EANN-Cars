@@ -47,7 +47,8 @@ class Car {
   getSensorInputs() {
     return this.sensors.map(offset => {
       const sensorEnd = this.castSensor(offset);
-      return 1 - (sensorEnd.distance / this.sensorLength);
+      const dist = sensorEnd?.distance ?? this.sensorLength;
+      return 1 - (dist / this.sensorLength);
     });
   }
 
@@ -117,22 +118,22 @@ class Car {
     if (!isOnTrack(this.x, this.y)) return -100;
 
     let reward = 0;
-
-    // 목표 접근 보상
     reward += (delta > 0) ? delta * 10 : -1;
-
-    // 제자리 방지
     if (displacement < 20) reward -= 2;
 
-    // 센서 위험 감지
     const sensors = this.getSensorInputs();
     for (const s of sensors) {
       if (s > 0.7) reward -= 5;
     }
 
-    // 직선 주행 보상 / 회전 패널티
     if (Math.abs(this.angleDelta) < 0.01) reward += 0.5;
     else reward -= 0.5;
+
+    // NaN 방지
+    if (isNaN(reward)) {
+      console.warn("NaN 보상 발생", sensors, delta, displacement);
+      reward = -10;
+    }
 
     return reward;
   }
