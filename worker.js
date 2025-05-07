@@ -16,10 +16,11 @@ class DQNAgent {
     this.batchSize = 32;
     this.memory = [];
     this.model = this.buildModel();
+    this.isTraining = false; // ✅ 중복 학습 방지용
   }
 
   buildModel() {
-    console.log("✅ 모델 생성 중: 입력 크기 =", this.stateSize);  // 디버깅용
+    console.log("✅ 모델 입력 크기:", this.stateSize);
     const model = tf.sequential();
     model.add(tf.layers.dense({ inputShape: [this.stateSize], units: 24, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 24, activation: 'relu' }));
@@ -34,7 +35,10 @@ class DQNAgent {
   }
 
   async replay() {
-    if (this.memory.length < this.batchSize) return;
+    if (this.isTraining || this.memory.length < this.batchSize) return;
+
+    this.isTraining = true;
+
     const minibatch = [];
     while (minibatch.length < this.batchSize) {
       const i = Math.floor(Math.random() * this.memory.length);
@@ -47,14 +51,18 @@ class DQNAgent {
     for (const { state, action, reward, nextState, done } of minibatch) {
       const target = reward + (!done ? this.gamma * tf.tidy(() =>
         this.model.predict(tf.tensor2d([nextState])).max(1).dataSync()[0]) : 0);
+
       const qValues = tf.tidy(() => this.model.predict(tf.tensor2d([state])).dataSync());
       qValues[action] = target;
+
       states.push(state);
       targets.push(qValues);
     }
 
     await this.model.fit(tf.tensor2d(states), tf.tensor2d(targets), { epochs: 1, verbose: 0 });
+
     if (this.epsilon > this.epsilonMin) this.epsilon *= this.epsilonDecay;
+    this.isTraining = false;
   }
 
   act(state) {
@@ -69,7 +77,8 @@ class DQNAgent {
   }
 }
 
-const agent = new DQNAgent(5, 3);  // ✅ 센서 5개로 확정
+// ✅ 센서 5개 입력 사용
+const agent = new DQNAgent(5, 3);
 
 onmessage = async (e) => {
   const { type, data, requestId } = e.data;
@@ -77,7 +86,7 @@ onmessage = async (e) => {
   if (type === "experience") {
     agent.remember(data);
   } else if (type === "train") {
-    await agent.replay();
+    await agent.replay();  // ✅ 반드시 await
   } else if (type === "act") {
     const action = agent.act(data);
     postMessage({ type: "action", requestId, action });
