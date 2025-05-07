@@ -1,5 +1,7 @@
-// === TensorFlow.js 추가 필요 ===
-// <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+//<!-- TensorFlow.js 추가 -->
+//<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+//<canvas id="dqnCanvas"></canvas>
+//<script>
 
 // === DQN Agent ===
 class DQNAgent {
@@ -124,7 +126,6 @@ class Car {
     const nowDist = this.distanceToFinish();
     const delta = this.lastDistance - nowDist;
 
-    // 원형 주행 감지용 이동량 계산
     this.pastPositions.push({ x: this.x, y: this.y });
     if (this.pastPositions.length > 20) this.pastPositions.shift();
     const dx = this.pastPositions[this.pastPositions.length - 1].x - this.pastPositions[0].x;
@@ -135,8 +136,8 @@ class Car {
 
     if (isOnFinish(this.x, this.y)) return 100;
     if (!isOnTrack(this.x, this.y)) return -100;
-    if (displacement < 20) return -2; // 원형 주행 억제
-    if (delta < 0) return -1; // 뒤로 가거나 멈춤
+    if (displacement < 20) return -2;
+    if (delta < 0) return -1;
 
     return delta * 10;
   }
@@ -174,7 +175,6 @@ function isOnFinish(x, y) {
 }
 
 // === 다중 차량 초기화 ===
-const agent = new DQNAgent(3, 3);
 const carCount = 10;
 let cars = [];
 let generation = 1;
@@ -182,11 +182,10 @@ let generation = 1;
 function initializeCars() {
   cars = [];
   for (let i = 0; i < carCount; i++) {
+    const agent = new DQNAgent(3, 3);
     cars.push(new Car(150, 150 + i * 10, agent));
   }
 }
-
-initializeCars();
 
 // === 트랙 ===
 function drawTrack() {
@@ -201,7 +200,7 @@ function drawTrack() {
 }
 
 // === 메인 루프 ===
-function animate() {
+async function animate() {
   drawTrack();
 
   let allDead = true;
@@ -218,11 +217,16 @@ function animate() {
     generation += 1;
   }
 
-  agent.replay();
+  for (const car of cars) {
+    await car.agent.replay();
+  }
+
   ctx.fillStyle = 'black';
   ctx.fillText(`Generation: ${generation}`, 10, 20);
 
   requestAnimationFrame(animate);
 }
 
+initializeCars();
 animate();
+</script>
