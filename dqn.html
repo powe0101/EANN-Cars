@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Simple Driving AI</title>
-  <link rel="stylesheet" href="style.css">
+  <title>DQN Car Simulation</title>
+  <style>
+    canvas { border: 1px solid black; }
+  </style>
 </head>
 <body>
-  <canvas id="dqnCanvas"></canvas>
+  <canvas id="dqnCanvas" width="800" height="600"></canvas>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
   <script src="dqn.js"></script>
 </body>
