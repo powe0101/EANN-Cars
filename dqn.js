@@ -74,7 +74,7 @@ class Car {
     if (!this.alive) return;
 
     this.stepCount++;
-    if (this.stepCount > 1000) {
+    if (this.stepCount > 300) {
       this.alive = false;
       return;
     }
@@ -95,10 +95,15 @@ class Car {
       const nextState = this.getSensorInputs();
       const done = !isOnTrack(this.x, this.y) || isOnFinish(this.x, this.y);
 
-      this.agentWorker.postMessage({
-        type: "experience",
-        data: { state, action, reward, nextState, done }
-      });
+      const experience = { state, action, reward, nextState, done };
+      this.agentWorker.postMessage({ type: "experience", data: experience });
+
+      // ✅ 도달 시 성공 경험을 3회 강화
+      if (done && isOnFinish(this.x, this.y)) {
+        for (let i = 0; i < 2; i++) {
+          this.agentWorker.postMessage({ type: "experience", data: experience });
+        }
+      }
 
       if (done) this.alive = false;
     });
@@ -122,11 +127,10 @@ class Car {
 
     this.lastDistance = nowDist;
 
-    if (isOnFinish(this.x, this.y)) return 100;
+    if (isOnFinish(this.x, this.y)) return 500; // ✅ 보상 강화
     if (!isOnTrack(this.x, this.y)) return -100;
 
     let reward = 0;
-
     reward += (delta > 0) ? delta * 10 : -1;
     if (displacement < 20) reward -= 2;
 
@@ -138,13 +142,11 @@ class Car {
     if (Math.abs(this.angleDelta) < 0.01) reward += 0.5;
     else reward -= 0.5;
 
-    // === 목표 방향 보상 (거리 반영) ===
     const angleToFinish = Math.atan2(finishLine.y - this.y, finishLine.x - this.x);
     let angleDiff = Math.abs(this.angle - angleToFinish) % (2 * Math.PI);
     if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
     reward += (Math.PI - angleDiff) * (1 - nowDist / 1000);
 
-    // === 회전 유지 감지 ===
     this.recentAngles.push(this.angle);
     if (this.recentAngles.length > 30) this.recentAngles.shift();
     if (this.recentAngles.length >= 10) {
