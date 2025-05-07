@@ -6,7 +6,7 @@ tf.setBackend('webgl').then(() => {
 
 class DQNAgent {
   constructor(stateSize, actionSize) {
-    this.stateSize = stateSize; // ✅ 5개 센서
+    this.stateSize = stateSize;
     this.actionSize = actionSize;
     this.gamma = 0.95;
     this.epsilon = 1.0;
@@ -19,6 +19,7 @@ class DQNAgent {
   }
 
   buildModel() {
+    console.log("✅ 모델 생성 중: 입력 크기 =", this.stateSize);  // 디버깅용
     const model = tf.sequential();
     model.add(tf.layers.dense({ inputShape: [this.stateSize], units: 24, activation: 'relu' }));
     model.add(tf.layers.dense({ units: 24, activation: 'relu' }));
@@ -68,8 +69,7 @@ class DQNAgent {
   }
 }
 
-// ✅ 센서 5개에 맞춰 stateSize도 5
-const agent = new DQNAgent(5, 3);
+const agent = new DQNAgent(5, 3);  // ✅ 센서 5개로 확정
 
 onmessage = async (e) => {
   const { type, data, requestId } = e.data;
